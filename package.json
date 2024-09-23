@@ -1,7 +1,7 @@
 {
-  "name": "speedtrackerbh",
+  "name": "node-starter",
   "version": "1.0.0",
-  "description": "A mobile app to collect and map road speed limits across Bahrain, with a Node.js and MongoDB backend.",
+  "description": "this boiler plate for upcoming projects",
   "main": "app.js",
   "type": "module",
   "scripts": {
