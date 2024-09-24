@@ -5,6 +5,8 @@ import connectDB from './config/database.js';
 //Environment Variables configuration
 dotenv.config();
 
+console.log(process.env.PORT, process.env.NODE_ENV);
+
 process.on('uncaughtException', (err) => {
   logger.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
   logger.error(`${err.name}: ${err.message}`); // Log error details

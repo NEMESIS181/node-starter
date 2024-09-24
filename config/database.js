@@ -6,10 +6,10 @@ import startApp from '../app.js'; // Make sure startApp is the server instance
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const connString = process.env.MONGO_URI;
+    const connString = process.env.MONGO_URL;
 
     if (!connString) {
-      logger.error('MONGO_URI missing');
+      logger.error('MONGO_URL missing');
       process.exit(1);
     }
 
