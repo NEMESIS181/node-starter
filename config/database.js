@@ -1,26 +1,27 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import logger from './logger.js';
-import startApp from '../app.js'; // Make sure startApp is the server instance
 
 // MongoDB connection
 const connectDB = async () => {
+  const connString = process.env.MONGO_URL;
+
+  if (!connString) {
+    logger.error('MONGO_URL missing');
+    process.exit(1);
+  }
+
   try {
-    const connString = process.env.MONGO_URL;
-
-    if (!connString) {
-      logger.error('MONGO_URL missing');
-      process.exit(1);
-    }
-
-    logger.info(`Connecting to MongoDB... ${connString}`);
+    logger.info('Connecting to MongoDB...');
 
     await mongoose.connect(connString);
-    logger.info('MongoDB connected successfully');
+    logger.info(`MongoDB connected: ${mongoose.connection.host}/${mongoose.connection.name}`);
   } catch (error) {
     logger.error('Error connecting to MongoDB:', error);
-    process.exit(1); // Ensure the app exits on database connection failure
+    process.exit(1);
   }
+
+  mongoose.connection.on('disconnected', () => logger.warn('MongoDB disconnected'));
+  mongoose.connection.on('error', (error) => logger.error('MongoDB error:', error));
 };
 
 export default connectDB;

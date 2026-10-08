@@ -1,27 +1,19 @@
 import { createLogger, format, transports } from 'winston';
 
-const { combine, timestamp, printf, colorize } = format;
+const { combine, timestamp, printf, colorize, errors, json } = format;
 
-const logFormat = printf(({ level, message, timestamp }) => {
-  return `${timestamp} ${level}: ${message}`;
+const logFormat = printf(({ level, message, timestamp, stack }) => {
+  return `${timestamp} ${level}: ${message}${stack ? `\n${stack}` : ''}`;
 });
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const logger = createLogger({
-  level: 'info',
-  format: combine(timestamp(), logFormat),
+  level: process.env.LOG_LEVEL || 'info',
+  format: combine(errors({ stack: true }), timestamp()),
   transports: [
     new transports.Console({
-      format: combine(colorize(), logFormat),
-    }),
-  ],
-  exceptionHandlers: [
-    new transports.Console({
-      format: combine(colorize(), logFormat),
-    }),
-  ],
-  rejectionHandlers: [
-    new transports.Console({
-      format: combine(colorize(), logFormat),
+      format: isProduction ? json() : combine(colorize(), logFormat),
     }),
   ],
 });
