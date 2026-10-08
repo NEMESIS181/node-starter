@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["speedtracker", "speedtrackerbh"]
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }
