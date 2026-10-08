@@ -1,3 +1,6 @@
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 30;
+
 class APIFeatures {
   constructor(query, queryString) {
     this.query = query;
@@ -13,8 +16,8 @@ class APIFeatures {
 
     //* Advanced filtering *\\
     let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
-    this.query.find(JSON.parse(queryStr));
+    queryStr = queryStr.replace(/"(gte|gt|lte|lt)":/g, '"$$$1":');
+    this.query = this.query.find(JSON.parse(queryStr));
     return this;
   }
 
@@ -39,8 +42,8 @@ class APIFeatures {
   }
 
   paginate() {
-    const page = this.queryString.page * 1 || 1;
-    const limit = this.queryString.limit * 1 || 30;
+    const page = Math.max(this.queryString.page * 1 || 1, 1);
+    const limit = Math.min(Math.max(this.queryString.limit * 1 || DEFAULT_LIMIT, 1), MAX_LIMIT);
     const skip = (page - 1) * limit;
 
     this.query = this.query.skip(skip).limit(limit);
