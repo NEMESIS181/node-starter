@@ -1,77 +1,72 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss-clean';
-import hpp from 'hpp';
 import cors from 'cors';
 
 import logger from './config/logger.js';
 import AppError from './utils/appError.js';
 import errorHandler from './middlewares/errorHandler.js';
+import sanitize from './middlewares/sanitize.js';
+import routes from './routes/index.js';
 
 // Initialize Express app
 const app = express();
+
+// Trust first proxy
+app.set('trust proxy', 1);
+
+// Parse nested query strings
+app.set('query parser', 'extended');
 
 // 1) GLOBAL MIDDLEWARES
 // Set security HTTP headers
 app.use(helmet());
 
 // Enable CORS
-app.use(cors()); // Allow Cross-Origin requests
+app.use(cors({ origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : '*' }));
 
-// Development logging
+// Request logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 }
 
 // Limit requests from same API
 const limiter = rateLimit({
-  max: 100,
+  limit: 100,
   windowMs: 60 * 60 * 1000,
-  message: 'Too many requests from this IP, please try again in an hour!',
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { status: 'fail', message: 'Too many requests from this IP, please try again in an hour!' },
 });
 app.use('/api', limiter);
 
-// Body parser, reading data from body into req.body
+// Body parsers, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Data sanitization against NoSQL query injection
-app.use(mongoSanitize());
-
-// Data sanitization against XSS
-app.use(xss());
-
-// Prevent parameter pollution
-app.use(hpp());
-
-// Test middleware
-app.use((req, res, next) => {
-  logger.info(`Incoming request: ${req.method} ${req.url}`);
-  next();
-});
+// Data sanitization against NoSQL query injection and parameter pollution
+app.use(sanitize({ whitelist: [] }));
 
 // 2) ROUTES
-app.all('*', (req, res, next) => {
+app.get('/health', (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+  res.status(dbConnected ? 200 : 503).json({
+    status: dbConnected ? 'ok' : 'unavailable',
+    db: dbConnected ? 'connected' : 'disconnected',
+    uptime: process.uptime(),
+  });
+});
+
+app.use('/api/v1', routes);
+
+app.all('/{*splat}', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
 app.use(errorHandler);
 
-function startApp() {
-  try {
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-      logger.info(`Server is up on port ${port}`);
-    });
-  } catch (error) {
-    logger.error('Error starting the server:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
-    process.exit(1); // Ensure the app exits on server startup failure
-  }
-}
-
-export default startApp;
+export default app;
